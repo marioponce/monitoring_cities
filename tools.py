@@ -18,19 +18,51 @@ ee.Authenticate()
 ee.Initialize()
 
 class Collection():
-    def __init__(self, source, 
-            img,
-            mask,
-            start_date,
-            end_date,
+    def __init__(self, 
+            source, 
+            boundaries,
+            start_date=None,
+            end_date=None,
+            img = None,
+            mask = None,
             new_name = None,
-            scale = None):
-        self.mask = mask
-        collection = (ee.ImageCollection(source)
-            .select(img)
-            .filterDate(start_date, end_date)
-            .filterBounds(self.mask)
-        )
+            scale = None,
+            reprojection = None,
+            reducer = None):
+        self.boundaries = boundaries
+        if start_date and end_date:
+            if img:
+                collection = (ee.ImageCollection(source)
+                    .select(img)
+                    .filterDate(start_date, end_date)
+                    .filterBounds(self.boundaries)
+                )
+            else:
+                collection = (ee.ImageCollection(source)
+                    .filterDate(start_date, end_date)
+                    .filterBounds(self.boundaries)
+                )
+        else:
+            if img:
+                collection = (ee.ImageCollection(source)
+                    .select(img)
+                    .filterBounds(self.boundaries)
+                )
+            else:
+                collection = (ee.ImageCollection(source)
+                    .filterBounds(self.boundaries)
+                )
+        if reducer:
+            collection = collection.map(
+                lambda image: image.reduceResolution(reducer=reducer, bestEffort=True, maxPixels=1024)
+            )
+        if reprojection:
+            collection = collection.map(lambda image: image.reproject(
+                crs=reprojection['crs'], 
+                scale=reprojection['scale']
+            ))
+        if mask:
+            collection = collection.map(lambda image: image.updateMask(mask))   
         if scale and new_name:
             collection = collection.map(
                 lambda image: image.select(img)
@@ -49,23 +81,47 @@ class Collection():
             )
         self.collection = collection
         self.events = {}
-    def get_event(self, start_date, end_date, name) -> None:
-        event = self.collection.filterDate(start_date, end_date).mean().clip(self.mask)
+    def get_event(self, start_date, end_date, name, type = None) -> None:
+        if type == 'sum':
+            event = self.collection.filterDate(start_date, end_date).sum().clip(self.boundaries)
+        elif type == 'median':
+            event = self.collection.filterDate(start_date, end_date).median().clip(self.boundaries)
+        elif type == 'min':
+            event = self.collection.filterDate(start_date, end_date).min().clip(self.boundaries)
+        elif type == 'max':
+            event = self.collection.filterDate(start_date, end_date).max().clip(self.boundaries)
+        elif type == 'std':
+            event = self.collection.filterDate(start_date, end_date).std().clip(self.boundaries)
+        elif type == 'first':   
+            event = self.collection.filterDate(start_date, end_date).first().clip(self.boundaries)
+        elif type == 'last':
+            event = self.collection.filterDate(start_date, end_date).last().clip(self.boundaries)
+        elif type == 'count':
+            event = self.collection.filterDate(start_date, end_date).count().clip(self.boundaries)
+        elif type == 'moisac':
+            event = self.collection.filterDate(start_date, end_date).mosaic().clip(self.boundaries)
+        else: # mean
+            event = self.collection.filterDate(start_date, end_date).mean().clip(self.boundaries)
         self.events.update({name: event})
+    def get_diff_event(self, name1, name2, new_name)    :
+        event1 = self.events[name1]
+        event2 = self.events[name2]
+        diff_event = event2.subtract(event1).clip(self.boundaries)
+        self.events.update({new_name: diff_event})
     def set_viz_params(self, params):
         self.viz_params = params
     def plot_event(self, name, title, legend_label=None):
         event = self.events[name]
         url = event.getThumbURL({
                 **self.viz_params,
-                'region': self.mask,
+                'region': self.boundaries,
                 'dimensions': 512
             })
         with urllib.request.urlopen(url) as f:
             img = np.array(Image.open(f).convert("RGB"))
         
 
-        bounds = self.mask.bounds().getInfo()['coordinates'][0]
+        bounds = self.boundaries.bounds().getInfo()['coordinates'][0]
         lons, lats = zip(*bounds)
         extent = [min(lons), max(lons), min(lats), max(lats)]
 
@@ -107,13 +163,13 @@ class Collection():
         plt.tight_layout(rect=[0, 0, 0.9, 1])  
         plt.show()
     def plot_timeseries(self, reducer=ee.Reducer.mean(), scale=7000, title=None, ylabel=None):
-        """Genera una serie temporal promedio dentro de la región (self.mask)."""
+        """Genera una serie temporal promedio dentro de la región (self.boundaries)."""
 
         # Reducimos cada imagen al valor medio dentro del ROI
         def reduce_region(img):
             mean = img.reduceRegion(
                 reducer=reducer,
-                geometry=self.mask,
+                geometry=self.boundaries,
                 scale=scale,
                 maxPixels=1e9
             )
@@ -164,7 +220,7 @@ class Collection():
             """Reduce cada imagen a un valor dentro de la región."""
             mean_dict = img.reduceRegion(
                 reducer=reducer,
-                geometry=self.mask,
+                geometry=self.boundaries,
                 scale=scale,
                 maxPixels=1e9
             )
