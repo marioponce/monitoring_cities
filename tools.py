@@ -100,6 +100,8 @@ class Collection():
             event = self.collection.filterDate(start_date, end_date).count().clip(self.boundaries)
         elif type == 'moisac':
             event = self.collection.filterDate(start_date, end_date).mosaic().clip(self.boundaries)
+        elif type == 'mean':
+            event = self.collection.filterDate(start_date, end_date).mean().clip(self.boundaries)
         else: # mean
             event = self.collection.filterDate(start_date, end_date).mean().clip(self.boundaries)
         self.events.update({name: event})
