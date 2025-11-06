@@ -1,0 +1,22 @@
+{
+  "pipeline": [
+    {
+      "type": "readers.las",
+      "filename": "../2014_*.las"
+    },
+    {
+      "type": "filters.reprojection",
+      "out_srs": "EPSG:6347"
+    },
+    {
+      "type": "writers.gdal",
+      "filename": "../DSM_2014.tif",
+      "resolution": 1.0,
+      "radius": 1.5,
+      "window_size": 3,
+      "output_type": "max",
+      "gdaldriver": "GTiff",
+      "data_type": "float32"
+    }
+  ]
+}

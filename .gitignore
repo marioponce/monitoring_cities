@@ -1,0 +1,14 @@
+# raster GeoTIFF and metada
+*.tif
+*.tif.aux.xml
+
+# LiDAR
+*.las
+*.laz
+
+# QGIS
+*.qgz
+*.qgs~
+.qgis2/
+.qgis3/
+.qgis/
