@@ -12,3 +12,13 @@
 .qgis2/
 .qgis3/
 .qgis/
+
+*.cpg
+*.dbf
+*.qmd
+*.prj
+*.shp
+*.shx
+*.ini
+
+*.xlsx
