@@ -34,5 +34,5 @@
 *.shp.xml
 *.sbn
 *.sbx
-*qpj
+*.qpj
 *.geojson
