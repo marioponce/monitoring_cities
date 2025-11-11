@@ -22,3 +22,7 @@
 *.ini
 
 *.xlsx
+*.mgrd
+*.sdat
+*.sdat.aux.xml
+*.sgrd
